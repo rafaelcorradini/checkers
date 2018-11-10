@@ -302,6 +302,7 @@ window.onload = function() {
   function evaluate(board) {
     let value = 0;
     
+    // add 1 point for piece, and remove 1 for oponnent piece
     for (row in board) { //row is the index
       for (column in board[row]) { //column is the index
         if(board[row][column] == 2) {
@@ -309,6 +310,17 @@ window.onload = function() {
         } else if(board[row][column] == 1) {
           value -= 1;
         }
+      }
+    }
+    // add 1 extra point for kings, and remove 1 extra points for oponnent kings
+    for (let pieceID = 0; pieceID < 12; pieceID++) {
+      if (!Board.pieces[pieceID].removed) {
+        if (Board.pieces[pieceID].kings) value -= 1;
+      }
+    }
+    for (let pieceID = 12; pieceID < 24; pieceID++) {
+      if (!Board.pieces[pieceID].removed) {
+        if (Board.pieces[pieceID].kings) value += 1;
       }
     }
 
