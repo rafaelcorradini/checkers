@@ -1,6 +1,6 @@
 window.onload = function() {    
   //The initial setup
-  var gameBoard = [ 
+  let gameBoard = [ 
     [  0,  1,  0,  1,  0,  1,  0,  1 ],
     [  1,  0,  1,  0,  1,  0,  1,  0 ],
     [  0,  1,  0,  1,  0,  1,  0,  1 ],
@@ -10,12 +10,8 @@ window.onload = function() {
     [  0,  2,  0,  2,  0,  2,  0,  2 ],
     [  2,  0,  2,  0,  2,  0,  2,  0 ]
   ];
-  //arrays to store the instances
-  var pieces = [];
-  var tiles = []; 
-  
   //distance formula
-  var dist = function (x1, y1, x2, y2) {
+  let dist = function (x1, y1, x2, y2) {
     return Math.sqrt(Math.pow((x1-x2),2)+Math.pow((y1-y2),2));
   }
   //Piece object - there are 24 instances of them in a checkers game
@@ -26,6 +22,8 @@ window.onload = function() {
     this.position = position; 
     //which player's piece i it
     this.player = '';
+    //piece was removed?
+    this.removed = false;
     //figure out player by piece id
     if(this.element.attr("id") < 12)
       this.player = 1;
@@ -34,7 +32,9 @@ window.onload = function() {
     //makes object a king
     this.king = false;
     this.makeKing = function () {
-      this.element.css("backgroundImage", "url('king"+this.player+".png')");
+      if (!Board.pause) {
+        this.element.css("backgroundImage", "url('king"+this.player+".png')");
+      }
       this.king = true;
     }
     //moves the piece
@@ -42,27 +42,36 @@ window.onload = function() {
       this.element.removeClass('selected'); 
       if(!Board.isValidPlacetoMove(tile.position[0], tile.position[1])) return false;
       //make sure piece doesn't go backwards if it's not a king
-      if(this.player == 1 && this.king == false) {
-        if(tile.position[0] < this.position[0]) return false;
-      } else if (this.player == 2 && this.king == false) {
-        if(tile.position[0] > this.position[0]) return false;
-      }
+      if(!this.isValidMove(tile)) return false;
       //remove the mark from Board.board and put it in the new spot
       Board.board[this.position[0]][this.position[1]] = 0;
       Board.board[tile.position[0]][tile.position[1]] = this.player;
       this.position = [tile.position[0], tile.position[1]];
       //change the css using board's dictionary
-      this.element.css('top', Board.dictionary[this.position[0]]);
-      this.element.css('left', Board.dictionary[this.position[1]]);
+      if (!Board.pause) {
+        this.element.css('top', Board.dictionary[this.position[0]]);
+        this.element.css('left', Board.dictionary[this.position[1]]);
+      }
       //if piece reaches the end of the row on opposite side crown it a king (can move all directions)
       if(!this.king && (this.position[0] == 0 || this.position[0] == 7 )) 
         this.makeKing();
-      Board.changePlayerTurn();
+      // changePlayerTurn();
       return true;
     };
+
+    this.isValidMove = function(tile) {
+      //make sure piece doesn't go backwards if it's not a king
+      if(this.player == 1 && this.king == false) {
+        if(tile.position[0] < this.position[0]) return false;
+      } else if (this.player == 2 && this.king == false) {
+        if(tile.position[0] > this.position[0]) return false;
+      }
+      return true;
+    }
     
     //tests if piece can jump anywhere
     this.canJumpAny = function () {
+      if(this.removed) return false;
       if(this.canOpponentJump([this.position[0]+2, this.position[1]+2]) ||
          this.canOpponentJump([this.position[0]+2, this.position[1]-2]) ||
          this.canOpponentJump([this.position[0]-2, this.position[1]+2]) ||
@@ -90,11 +99,11 @@ window.onload = function() {
       //if there is a piece there and there is no piece in the space after that
       if(!Board.isValidPlacetoMove(tileToChecky, tileToCheckx) && Board.isValidPlacetoMove(newPosition[0], newPosition[1])) {
         //find which object instance is sitting there
-        for(pieceIndex in pieces) {
-          if(pieces[pieceIndex].position[0] == tileToChecky && pieces[pieceIndex].position[1] == tileToCheckx) {
-            if(this.player != pieces[pieceIndex].player) {
+        for(pieceIndex in Board.pieces) {
+          if(Board.pieces[pieceIndex].position[0] == tileToChecky && Board.pieces[pieceIndex].position[1] == tileToCheckx) {
+            if(this.player != Board.pieces[pieceIndex].player) {
               //return the piece sitting there
-              return pieces[pieceIndex];
+              return Board.pieces[pieceIndex];
             }
           }
         }
@@ -106,7 +115,7 @@ window.onload = function() {
       var pieceToRemove = this.canOpponentJump(tile.position);
       //if there is a piece to be removed, remove it
       if(pieceToRemove) {
-        pieces[pieceIndex].remove();
+        Board.pieces[pieceIndex].remove();
         return true;
       }
       return false;
@@ -114,12 +123,15 @@ window.onload = function() {
     
     this.remove = function () {
       //remove it and delete it from the gameboard
-      this.element.css("display", "none");
-      if(this.player == 1) $('#player2').append("<div class='capturedPiece'></div>");
-      if(this.player == 2) $('#player1').append("<div class='capturedPiece'></div>");
+      if (!Board.pause) {
+        this.element.css("display", "none");
+        if(this.player == 1) $('#player2').append("<div class='capturedPiece'></div>");
+        if(this.player == 2) $('#player1').append("<div class='capturedPiece'></div>");
+      }
       Board.board[this.position[0]][this.position[1]] = 0;
       //reset position so it doesn't get picked up by the for loop in the canOpponentJump method
       this.position = [];
+      this.removed = true;
     }
   }
   
@@ -130,6 +142,9 @@ window.onload = function() {
     this.position = position;
     //if tile is in range from the piece
     this.inRange = function(piece) {
+      if (!Board.isValidPlacetoMove(this.position[0], this.position[1])) {
+        return false;
+      }
       if(dist(this.position[0], this.position[1], piece.position[0], piece.position[1]) == Math.sqrt(2)) {
         //regular move
         return 'regular';
@@ -141,9 +156,13 @@ window.onload = function() {
   }
   
   //Board object - controls logistics of game
-  var Board = {
+  let Board = {
     board: gameBoard,
     playerTurn: 1,
+    turnIA: false,
+    pause: false,
+    pieces: [],
+    tiles: [],
     tilesElement: $('div.tiles'),
     //dictionary to convert position in Board.board to the viewport units
     dictionary: ["0vmin", "10vmin", "20vmin", "30vmin", "40vmin", "50vmin", "60vmin", "70vmin", "80vmin", "90vmin"],
@@ -151,29 +170,31 @@ window.onload = function() {
     initalize: function () {
       var countPieces = 0;
       var countTiles = 0;
+
       for (row in this.board) { //row is the index
         for (column in this.board[row]) { //column is the index
+          
           //whole set of if statements control where the tiles and pieces should be placed on the board
           if(row%2 == 1) {
             if(column%2 == 0) {
               this.tilesElement.append("<div class='tile' id='tile"+countTiles+"' style='top:"+this.dictionary[row]+";left:"+this.dictionary[column]+";'></div>");
-              tiles[countTiles] = new Tile($("#tile"+countTiles), [parseInt(row), parseInt(column)]);
+              this.tiles[countTiles] = new Tile($("#tile"+countTiles), [parseInt(row), parseInt(column)]);
               countTiles += 1;
             }
           } else {
             if(column%2 == 1) {
               this.tilesElement.append("<div class='tile' id='tile"+countTiles+"' style='top:"+this.dictionary[row]+";left:"+this.dictionary[column]+";'></div>");
-              tiles[countTiles] = new Tile($("#tile"+countTiles), [parseInt(row), parseInt(column)]);
+              this.tiles[countTiles] = new Tile($("#tile"+countTiles), [parseInt(row), parseInt(column)]);
               countTiles += 1;
             }
           }
           if(this.board[row][column] == 1) {
             $('.player1pieces').append("<div class='piece' id='"+countPieces+"' style='top:"+this.dictionary[row]+";left:"+this.dictionary[column]+";'></div>");
-            pieces[countPieces] = new Piece($("#"+countPieces), [parseInt(row), parseInt(column)]);
+            this.pieces[countPieces] = new Piece($("#"+countPieces), [parseInt(row), parseInt(column)]);
             countPieces += 1;
           } else if(this.board[row][column] == 2) {
             $('.player2pieces').append("<div class='piece' id='"+countPieces+"' style='top:"+this.dictionary[row]+";left:"+this.dictionary[column]+";'></div>");
-            pieces[countPieces] = new Piece($("#"+countPieces), [parseInt(row), parseInt(column)]);
+            this.pieces[countPieces] = new Piece($("#"+countPieces), [parseInt(row), parseInt(column)]);
             countPieces += 1;
           }
         }
@@ -181,22 +202,9 @@ window.onload = function() {
     },
     //check if the location has an object
     isValidPlacetoMove: function (row, column) {
-      console.log(row); console.log(column); console.log(this.board);
       if(this.board[row][column] == 0) {
         return true;
       } return false;
-    },
-    //change the active player - also changes div.turn's CSS
-    changePlayerTurn: function () {
-      if(this.playerTurn == 1) {
-        this.playerTurn = 2;
-        $('.turn').css("background", "linear-gradient(to right, transparent 50%, #BEEE62 50%)");
-        return;
-      }
-      if(this.playerTurn == 2) {
-        this.playerTurn = 1;
-        $('.turn').css("background", "linear-gradient(to right, #BEEE62 50%, transparent 50%)");
-      }
     },
     //reset the game
     clear: function () {
@@ -234,26 +242,30 @@ window.onload = function() {
     //make sure a piece is selected
     if($('.selected').length != 0) {
       //find the tile object being clicked
-      var tileID = $(this).attr("id").replace(/tile/, '');
-      var tile = tiles[tileID];
+      const tileID = $(this).attr("id").replace(/tile/, '');
+      let tile = Board.tiles[tileID];
       //find the piece being selected
-      var piece = pieces[$('.selected').attr("id")];
+      let piece = Board.pieces[$('.selected').attr("id")];
       //check if the tile is in range from the object
-      var inRange = tile.inRange(piece);
+      let inRange = tile.inRange(piece);
       if(inRange) {
         //if the move needed is jump, then move it but also check if another move can be made (double and triple jumps)
         if(inRange == 'jump') {
           if(piece.opponentJump(tile)) {
-            piece.move(tile);
-            if(piece.canJumpAny()) {
-               Board.changePlayerTurn(); //change back to original since another turn can be made
-               piece.element.addClass('selected');
+            if(piece.move(tile)) {
+              if(piece.canJumpAny()) {
+                piece.element.addClass('selected');
+              } else {
+                changePlayerTurn();
+              }
             }
           } 
           //if it's regular then move it if no jumping is available
         } else if(inRange == 'regular') {
-          if(!piece.canJumpAny()) {
-            piece.move(tile);
+          if(!canJumpAny()) {
+            if(piece.move(tile)) {
+              changePlayerTurn();
+            }
           } else {
             alert("You must jump when possible!");
           }
@@ -261,5 +273,216 @@ window.onload = function() {
       }
     }
   });
+
+  //change the active player - also changes div.turn's CSS
+  function changePlayerTurn() {
+    if(Board.playerTurn == 1) {
+      Board.playerTurn = 2;
+      if (!Board.turnIA) {
+        $('.turn').css("background", "linear-gradient(to right, transparent 50%, #BEEE62 50%)");
+        Board.turnIA = true;
+        Board.pause = true;
+        boardBackup = _.cloneDeep(Board);
+        result = minimax(3, null, false);
+        Board = boardBackup;
+        Board.pause = false;
+        moveByValue(result);
+        Board.turnIA = false;
+      }
+      return;
+    }
+    if(Board.playerTurn == 2) {
+      Board.playerTurn = 1;
+      if (!Board.pause && !Board.turnIA) {
+        $('.turn').css("background", "linear-gradient(to right, #BEEE62 50%, transparent 50%)");
+      }
+    }
+  }
+
+  function evaluate(board) {
+    let value = 0;
+    
+    for (row in board) { //row is the index
+      for (column in board[row]) { //column is the index
+        if(board[row][column] == 2) {
+          value += 1;
+        } else if(board[row][column] == 1) {
+          value -= 1;
+        }
+      }
+    }
+
+    return value;
+  }
+
+  function minimax(level, jumping = null, changeTurn) {
+    let value = -99999999999;
+    let resultPiece = null;
+    let resultTile = null;
+    let init = 12;
+    let final = 24;
+    if (changeTurn) {
+      changePlayerTurn();
+    }
+    if (Board.playerTurn == 1) {
+      value = 999999999;
+      init = 0;
+      final = 12;
+    }
+    if (level == 0) {
+      return { 
+        pieceID: null,
+        tileID: null,
+        score: evaluate(Board.board)
+      };
+    } 
+    for (let pieceID = init; pieceID < final; pieceID++) {
+      for (let tileID = 0; tileID < 32; tileID++) {
+        let tile = Board.tiles[tileID];
+        let piece = Board.pieces[pieceID];
+        if (jumping != null) {
+          piece = jumping; // if is jumping mutiple pieces
+        }
+        let inRange = tile.inRange(piece);
+        let boardBackup = null;
+        if(inRange && !piece.removed && piece.isValidMove(tile)) {
+          //if the move needed is jump, then move it but also check if another move can be made (double and triple jumps)
+          if(inRange == 'jump') {
+            if(piece.opponentJump(tile)) {
+              boardBackup = copyBoard(Board);
+              
+              piece.move(tile);
+              if(piece.canJumpAny()) {
+                const turn = Board.playerTurn;
+                value = getMaxOrMin(value, minimax(level, piece, false).score, turn);
+                if(!Board.pause) {
+                  piece.element.addClass('selected');
+                }
+              } else {
+                const turn = Board.playerTurn;
+                value = getMaxOrMin(value, minimax(level - 1, null, true).score, turn);
+                changePlayerTurn();
+              }
+              Board = boardBackup;
+              return { 
+                pieceID: pieceID,
+                tileID: tileID,
+                score: evaluate(Board.board)
+              };
+            } 
+            //if it's regular then move it if no jumping is available
+          } else if(inRange == 'regular' && jumping == null) {
+            if(!canJumpAny()) {
+              boardBackup = copyBoard(Board);
+              piece.move(tile);
+              const oldValue = value;
+              const turn = Board.playerTurn;
+              value = getMaxOrMin(value, minimax(level - 1, null, true).score, turn);
+              changePlayerTurn();
+              Board = boardBackup;
+              if (value != oldValue || resultPiece == null) {
+                resultPiece = pieceID;
+                resultTile = tileID;
+              }
+            } else {
+              continue;
+            }
+          }
+        }
+      }
+    } 
+    return { 
+      pieceID: resultPiece,
+      tileID: resultTile,
+      score: value
+    };
+  }
+
+  function canJumpAny() {
+    let init = 12;
+    let final = 24;
+    if (Board.playerTurn == 1) {
+      init = 0;
+      final = 12;
+    }
+    for (let pieceID = init; pieceID < final; pieceID++) {
+      if (Board.pieces[pieceID].canJumpAny()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function moveByValue(result) {
+    // print results to test
+    console.log('IA play:');
+    console.log(copyBoard(result), copyBoard(Board.board));
+    if (result.pieceID != null && result.tileID != null) {
+      let tile = Board.tiles[result.tileID];
+      let piece = Board.pieces[result.pieceID];
+      let inRange = tile.inRange(piece);
+      if (inRange) {
+        result.tileID = null;
+        if(inRange == 'jump') {
+          if(piece.opponentJump(tile)) {
+            piece.move(tile);
+            if(piece.canJumpAny()) {
+              piece.element.addClass('selected');
+              moveByValue(result);
+            } else {
+              result.pieceID = null;
+              changePlayerTurn();
+            }
+            return;
+          }
+          //if it's regular then move it if no jumping is available
+        } else if(inRange == 'regular') {
+          piece.move(tile);
+          changePlayerTurn();
+          return;
+        }
+      }
+    }
+    if (result.pieceID != null) {
+      let piece = Board.pieces[result.pieceID];
+      for (let tileID = 0; tileID < 32; tileID++) {
+        let tile = Board.tiles[tileID];
+        let inRange = tile.inRange(piece);
+
+        if(inRange == 'jump') {
+          if(piece.opponentJump(tile)) {
+            piece.move(tile);
+            if(piece.canJumpAny()) {
+               piece.element.addClass('selected');
+               moveByValue(result);
+            } else {
+              changePlayerTurn();
+            }
+            return;
+          }
+        } else if(inRange == 'regular') {
+          if(!piece.canJumpAny()) {
+            piece.move(tile);
+            changePlayerTurn();
+            return;
+          }
+        }
+      }
+    }
+  
+  }
+
+  function getMaxOrMin(val1, val2, turn) {
+    if (turn == 2) {
+      return Math.max(val1, val2);
+    } else {
+      return Math.min(val1, val2);
+    }
+  }
+
+  function copyBoard(oldBoard) {
+    return _.cloneDeep(oldBoard);
+  }
   
 }

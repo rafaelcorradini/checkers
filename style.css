@@ -60,7 +60,7 @@ div.stats {
     display: inline-block;
     width: 50%;
     float: left;
-    background-color: #B93848;
+    background-color: #eee;
     box-sizing: border-box;
     padding: 0 15px 20px;
     border-top-left-radius: 3px;
@@ -86,11 +86,11 @@ div.stats {
     box-sizing: border-box;
     padding: 0 15px 20px;
     border-top-right-radius: 3px;
-    color: #B93848; }
+    color: #eee; }
     div.stats #player2 .capturedPiece {
       width: 2.4vmin;
       height: 2.4vmin;
-      background-color: #B93848;
+      background-color: #eee;
       background-size: 65%;
       background-repeat: no-repeat;
       background-position: center;
@@ -126,7 +126,7 @@ div#board {
   height: 80vmin;
   border-radius: 5px;
   box-shadow: 1px 1px 3px #232621;
-  background-color: #B93848;
+  background-color: #eee;
   overflow: hidden; }
   div#board .tile {
     width: 10vmin;
@@ -137,7 +137,7 @@ div#board {
     position: absolute;
     width: 8vmin;
     height: 8vmin;
-    background-color: #e4a6ae;
+    background-color: #333;
     background-size: 65%;
     background-repeat: no-repeat;
     background-position: center;
@@ -148,7 +148,7 @@ div#board {
     margin-top: 1vmin;
     margin-left: 1vmin;
     cursor: pointer;
-    border: 1vmin solid #B93848; }
+    border: 1vmin solid #eee; }
     div#board .player1pieces .piece.selected {
       box-shadow: 0 0 10px 5px #16A8C7; }
   div#board .player2pieces .piece {

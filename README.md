@@ -1,5 +1,9 @@
 # Checkers
 
+This game is a fork of: https://github.com/codethejason/checkers
+## Minimax
+This version of the game have a opponent controlled by an artificial intelligence(minimax algorithm).
+
 ## Using It
 Play by selecting your piece and clicking on the tile you want to move to. Click [here](http://www.itsyourturn.com/t_helptopic2030.html) to learn how to play checkers. Jumping when available is enforced.
 
@@ -10,4 +14,4 @@ If you find any bugs, please make a Pull Request or an Issue.
 
 
 ## Live Demo
-[DEMO](http://codethejason.github.io/checkers/index.html)
+[DEMO](https://rafaelcdacunha.com.br/static/checkers/index.html)
